@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>ކުޑަ ލެޓިން ތަރުޖަމާނު | Dhivehi transliteration in the browser</title>
+<!-- On hosts that cannot send COOP/COEP headers (GitHub Pages), this service worker adds them
+     client-side so the WASM runtime can use threads. It does nothing when the server already sends them. -->
+<script src="coi-serviceworker.js"></script>
+<style>
+  /* every face is served from this repo, so the page needs no font CDN */
+  @font-face { font-family: 'IBM Plex Sans'; src: url('fonts/plex-sans-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+  @font-face { font-family: 'IBM Plex Sans'; src: url('fonts/plex-sans-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('fonts/plex-mono-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+  @font-face { font-family: 'Faruma'; src: url('fonts/Faruma.ttf') format('truetype'); font-display: swap; }
+  @font-face { font-family: 'Mv MAG Round XBold'; src: url('fonts/MvMAGRoundXBold.ttf') format('truetype'); font-display: swap; }
+  :root { --ink: #111; --muted: #7a7a7a; --line: #e7e7e7; --mono: 'IBM Plex Mono', ui-monospace, monospace; }
+  html, body { background: #fff; }
+  body { margin: 0; color: var(--ink); font-family: 'IBM Plex Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  /* width:100% matters on the phone, where body is a flex column: an auto margin on a
+     flex child cancels the stretch and the box would shrink to fit its text instead. */
+  .wrap { width: 100%; max-width: 1600px; margin: 0 auto; padding: 0 2rem; box-sizing: border-box; }
+  /* sticky frosted header, no border and no shadow */
+  header { position: sticky; top: 0; z-index: 10; padding: .9rem 0 .8rem;
+    background: rgba(255, 255, 255, .62); -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); }
+  header .wrap { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  h1 { margin: 0; font-family: 'Mv MAG Round XBold', 'Faruma', sans-serif; font-weight: normal; font-size: 1.9rem; line-height: 1.3; direction: rtl; }
+  .sub { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+  main.wrap { padding-top: 2rem; padding-bottom: 3rem; }
+  /* the two text areas sit side by side and share the width */
+  .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .pane { display: flex; flex-direction: column; min-width: 0; }
+  .bar { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: .5rem; }
+  .bar.top { align-items: center; }
+  .bar .lbl { font-family: 'Faruma', sans-serif; font-size: 1.25rem; color: var(--muted); }
+  .bar .lbl.latin { font-family: inherit; font-size: .95rem; }
+  .bar.out { border-bottom: 1px solid var(--line); }
+  #status { margin: 0; font-family: var(--mono); font-size: .74rem; color: var(--muted); }
+  textarea { display: block; flex: 1 1 auto; width: 100%; min-height: 13rem; box-sizing: border-box; padding: 1rem 1.1rem; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); font: inherit; font-size: max(1.05rem, 16px); line-height: 1.6; resize: vertical; outline: none; transition: border-color .15s; }
+  textarea:focus { border-color: var(--ink); }
+  textarea::placeholder { color: #b5b5b5; }
+  #out { flex: 1 1 auto; direction: rtl; text-align: right; font-family: 'Faruma', 'MV Boli', sans-serif; font-size: 1.25rem; line-height: 1.8; min-height: 13rem; box-sizing: border-box; padding: 1rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .row { display: flex; align-items: center; flex-wrap: wrap; gap: 1.1rem; margin: 1.5rem 0 0; }
+  button { font: inherit; font-size: .95rem; font-weight: 500; cursor: pointer; }
+  #go { padding: .65rem 1.4rem; min-height: 44px; border: 0; border-radius: 999px; background: var(--ink); color: #fff; }
+  #go:disabled { background: #cfcfcf; cursor: default; }
+  .live { display: inline-flex; align-items: center; gap: .45rem; min-height: 44px; color: var(--muted); font-size: .95rem; cursor: pointer; user-select: none; }
+  .live input { accent-color: var(--ink); width: 1.1rem; height: 1.1rem; margin: 0; }
+  .ghost { display: inline-flex; align-items: center; gap: .4rem; padding: .4rem .75rem .4rem 0; border: 0; background: none; color: var(--muted); -webkit-tap-highlight-color: transparent; }
+  .ghost:hover { color: var(--ink); }
+  .ghost svg { display: block; }
+  .ghost .i-done { display: none; }
+  .ghost.done .i-copy { display: none; }
+  .ghost.done .i-done { display: block; animation: pop .35s ease; }
+  .ghost.done { color: #15803d; }
+  .ghost.fail { color: #b91c1c; }
+  .ghost .cue { font-size: .8rem; opacity: 0; transform: translateY(3px); transition: opacity .2s, transform .2s; }
+  .ghost.done .cue, .ghost.fail .cue { opacity: 1; transform: none; }
+  @keyframes pop { 0% { transform: scale(.5); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); font-family: var(--mono); font-size: .74rem; }
+  footer nav { display: flex; justify-content: flex-end; gap: 1.4rem; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+  @media (max-width: 900px) {
+    .wrap { max-width: 760px; padding: 0 1.25rem; }
+    .panes { grid-template-columns: 1fr; gap: 1.25rem; }
+  }
+  @media (max-width: 600px) {
+    /* Fit the page in the phone's viewport, so nothing normally scrolls. overflow-y is auto
+       rather than hidden on purpose: if the viewport ever ends up shorter than the layout
+       (the keyboard opening, the URL bar, a reload that restores a scroll offset), hidden
+       would strand the header off-screen with no way to scroll back to it. */
+    html { height: 100%; }
+    body { display: flex; flex-direction: column; height: 100dvh; overflow-y: auto; overscroll-behavior-y: contain; }
+    .wrap { padding: 0 .75rem; }
+    header { flex: none; padding: .6rem 0 .55rem; }
+    header .wrap { flex-direction: column; align-items: center; gap: .1rem; text-align: center; }
+    h1 { font-size: 1.4rem; }
+    .sub { font-size: .8rem; }
+    main.wrap { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding-top: .75rem; padding-bottom: .5rem; }
+    .panes { flex: 1 1 auto; min-height: 0; gap: .5rem; grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+    .pane { min-height: 0; }
+    .bar { flex: none; }
+    textarea { flex: 1 1 0; min-height: 0; padding: .7rem .5rem; border-radius: 10px; resize: none; }
+    #out { flex: 1 1 0; min-height: 0; overflow-y: auto; font-size: 1.15rem; line-height: 1.8; padding: .6rem 0 0; }
+    .row { flex: none; justify-content: center; margin: .6rem 0 0; }
+    #go { padding: .65rem 2.25rem; }
+    footer { flex: none; margin-top: .6rem; padding-top: .6rem; font-size: .7rem; }
+    footer nav { justify-content: center; gap: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>ކުޑަ ލެޓިން ތަރުޖަމާނު</h1>
+    <p class="sub">Latin → Thaana, on your device.</p>
+  </div>
+</header>
+<main class="wrap">
+<div class="panes">
+  <section class="pane">
+    <div class="bar top"><span class="lbl latin">Latin</span><p id="status">loading model…</p></div>
+    <textarea id="in" dir="ltr" spellcheck="false" placeholder="Type Latin Dhivehi here…"></textarea>
+  </section>
+  <section class="pane">
+    <div class="bar out"><button id="copy" class="ghost" type="button" aria-label="Copy" title="Copy"><svg class="i-copy" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg><svg class="i-done" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="cue"></span></button><span class="lbl">ތާނަ</span></div>
+    <div id="out"></div>
+  </section>
+</div>
+<div class="row"><button id="go" disabled>Transliterate</button> <label class="live"><input type="checkbox" id="live" checked> live</label></div>
+<footer>
+  <nav><a href="https://github.com/streetsolider/div-transliteration-web">GitHub</a><a href="https://huggingface.co/str33t/dhivehi-tiny-latin2thaana-keymap-v1">Hugging Face</a><a href="paper/small-enough-for-the-browser.pdf">Paper</a></nav>
+</footer>
+</main>
+<script>
+// navigator.clipboard exists only on secure pages (https or localhost); on a plain-http
+// LAN address fall back to the old selection + execCommand route, which still works there.
+async function copyText(text) {
+  if (window.isSecureContext && navigator.clipboard) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+  document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+  return ok;
+}
+let copyTimer = null;
+document.getElementById('copy').onclick = async () => {
+  const b = document.getElementById('copy'), cue = b.querySelector('.cue');
+  const text = document.getElementById('out').textContent;
+  const ok = text ? await copyText(text) : false;
+  clearTimeout(copyTimer);
+  b.classList.remove('done', 'fail');
+  void b.offsetWidth;   // restart the animation on a second tap
+  b.classList.add(ok ? 'done' : 'fail');
+  cue.textContent = ok ? 'Copied' : (text ? 'Could not copy' : 'Nothing to copy');
+  copyTimer = setTimeout(() => { b.classList.remove('done', 'fail'); cue.textContent = ''; }, 1600);
+};
+</script>
+<script type="module">
+// Serve this folder over HTTP (`python serve.py`, see README). The model is
+// fetched from the Hugging Face Hub; ?model=<folder> loads a local export from ./models/ instead.
+import { env, Tensor, AutoModelForSeq2SeqLM } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+import { transliterate, makeKeymapToThaana, byt5Encode, byt5Decode, maxNewTokensFor } from './pipeline.js';
+
+const MODEL = new URLSearchParams(location.search).get('model') || 'str33t/dhivehi-tiny-latin2thaana-keymap-v1';
+const REMOTE = MODEL.includes('/');   // hub id, else a folder under ./models/
+const MODEL_BASE = REMOTE ? `https://huggingface.co/${MODEL}/resolve/main/` : `./models/${MODEL}/`;
+const DTYPE = new URLSearchParams(location.search).get('dtype') || 'q8';
+const DEVICE = new URLSearchParams(location.search).get('device') || 'wasm';   // ?device=webgpu to try the GPU path
+// Bump MODEL_REV whenever a model folder is re-exported: the runtime caches
+// model files by URL for a year, so a changed file under the same name would
+// otherwise never be picked up (on a phone, ever).
+const MODEL_REV = '2026-09-06c';
+try {
+  if (localStorage.getItem('div-translit-model-rev') !== MODEL_REV) {
+    await caches.delete('transformers-cache');
+    // and bypass the HTTP cache for the model files once, so a re-export is really fetched
+    for (const f of ['config.json', 'generation_config.json', 'onnx/encoder_model_quantized.onnx', 'onnx/decoder_model_merged_quantized.onnx']) {
+      try { await fetch(MODEL_BASE + f, { cache: 'reload' }); } catch (e) {}
+    }
+    localStorage.setItem('div-translit-model-rev', MODEL_REV);
+  }
+} catch (e) {}
+env.allowRemoteModels = REMOTE;
+env.allowLocalModels = !REMOTE;   // browser builds disable local models by default
+env.localModelPath = './models/';
+
+// The phone layout starts at the top. A reload restores the previous scroll offset by
+// default, and the service worker reloads the page once on a first visit, which left the
+// sticky header above the viewport until you scrolled up. Opt out and pin it to the top;
+// this has to run before the model is awaited, or the page sits wrong for seconds.
+try { history.scrollRestoration = 'manual'; } catch (e) {}
+const toTop = () => { try { window.scrollTo(0, 0); document.body.scrollTop = 0; } catch (e) {} };
+toTop();
+addEventListener('pageshow', toTop);
+addEventListener('load', toTop);
+
+const status = document.getElementById('status');
+// 'back_forward' means the browser restored a tab it had discarded, which phones do to
+// background tabs; put the text back only in that case. Opening or reloading the page is
+// deliberate and starts on an empty box, so the store is dropped then.
+const navType = performance.getEntriesByType('navigation')[0]?.type;
+try {
+  const saved = navType === 'back_forward' ? localStorage.getItem('div-translit-in') : null;
+  if (saved) {
+    document.getElementById('in').value = saved;
+    const savedOut = localStorage.getItem('div-translit-out');
+    if (savedOut) document.getElementById('out').textContent = savedOut;
+  } else {
+    localStorage.removeItem('div-translit-in');
+    localStorage.removeItem('div-translit-out');
+  }
+} catch (e) {}
+const t0 = performance.now();
+const [model, table] = await Promise.all([
+  AutoModelForSeq2SeqLM.from_pretrained(MODEL, { dtype: DTYPE, device: DEVICE }),
+  fetch('./keymap.json').then((r) => r.json()),
+]);
+const keymapToThaana = makeKeymapToThaana(table);
+// Say when this load was not a fresh visit: 'reload' is a refresh (pull-down included),
+// 'back_forward' is the browser restoring a tab it had discarded, which looks like a reload.
+const navNote = navType === 'back_forward' ? ' · restored tab' : navType === 'reload' ? ' · reloaded' : '';
+status.textContent = `${DTYPE} · ${DEVICE} · loaded in ${((performance.now() - t0) / 1000).toFixed(1)} s${navNote}`;
+
+async function generate(chunks) {
+  const enc = byt5Encode(chunks, Tensor);
+  const out = await model.generate({ ...enc, max_new_tokens: maxNewTokensFor(chunks), num_beams: 1, do_sample: false });
+  return byt5Decode(out);
+}
+
+let busy = false, pending = false;
+async function run() {
+  if (busy) { pending = true; return; }
+  busy = true;
+  const text = document.getElementById('in').value;
+  const t = performance.now();
+  const thaana = await transliterate(text, generate, keymapToThaana);
+  document.getElementById('out').textContent = thaana;
+  status.textContent = `${DTYPE} · ${DEVICE} · ${(performance.now() - t).toFixed(0)} ms`;
+  try { localStorage.setItem('div-translit-in', text); localStorage.setItem('div-translit-out', thaana); } catch (e) {}
+  busy = false;
+  if (pending) { pending = false; run(); }
+}
+document.getElementById('go').disabled = false;
+document.getElementById('go').onclick = run;
+let timer = null;   // live mode: run 400 ms after typing stops, not on every keystroke
+document.getElementById('in').addEventListener('input', () => {
+  try { localStorage.setItem('div-translit-in', document.getElementById('in').value); } catch (e) {}
+  if (!document.getElementById('live').checked) return;
+  clearTimeout(timer);
+  timer = setTimeout(run, 400);
+});
+// nothing to transliterate on a first visit; keep the load time on screen instead
+if (document.getElementById('in').value.trim()) run();
+</script>
+</body>
+</html>

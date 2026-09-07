@@ -1,0 +1,8 @@
+node_modules/
+*.log
+paper/tools/
+paper/*.aux
+paper/*.log
+paper/*.bbl
+paper/*.blg
+paper/*.out
